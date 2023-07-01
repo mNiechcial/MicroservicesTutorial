@@ -1,0 +1,48 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using Product.Microservice.Data;
+
+namespace Product.Microservice.Extensions
+{
+    public static class CoreExtensions
+    {
+        public static void AddDbContext(this IServiceCollection services, string connectionString)
+        {
+            services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(
+                connectionString,
+                sqlServerOptionsAction: b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName))
+            );
+            services.AddScoped<IApplicationDbContext>(provider => provider.GetService<ApplicationDbContext>());
+        }
+
+        public static void AddSwagger(this IServiceCollection services)
+        {
+            services.AddSwaggerGen(c =>
+            {
+                c.IncludeXmlComments(string.Format(@"{0}\Product.Microservice.xml", System.AppDomain.CurrentDomain.BaseDirectory));
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Version = "v1",
+                    Title = "Product Microservice API",
+                });
+            });
+        }
+
+        public static void RunMigrations(this WebApplication app)
+        {
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider
+                    .GetRequiredService<ApplicationDbContext>();
+
+                // Here is the migration executed
+                dbContext.Database.Migrate();
+            }
+        }
+    }
+}
